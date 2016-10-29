@@ -1,5 +1,5 @@
 # VerticalSlidingLayout
-这个一个可以上下滑动的ViewGroup
+这是一个可以上下滑动的ViewGroup
 
 使用方式：
 
