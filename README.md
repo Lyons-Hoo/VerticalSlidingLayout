@@ -51,10 +51,18 @@
     
     例如：
     
-    VerticalSlidingLayout vsl = (VerticalSlidingLayout) findViewById(R.id.vsl_test);
+    /**
+         * 设置监听
+         */
         vsl.setOnViewIndexChangeListener(new SlidingViewGroup.OnViewIndexChangeListener() {
             @Override
             public void viewIndexChanged(int viewIndex) {
+                /**
+                 * 这里做你的逻辑操作（viewIndex为当前屏幕所呈现的View在容器中的下标）
+                 */
                 Toast.makeText(Main2Activity.this, "CurrentViewIndex:" + viewIndex, Toast.LENGTH_SHORT).show();
             }
         });
+        
+        
+    然后就可以运行你的工程查看效果了
