@@ -221,7 +221,7 @@ public class VerticalSlidingLayout extends ViewGroup {
          */
         if (endLayoutY > b) {
             // 下标是从0开始
-            mMaxCanSlidingViewIndex = (endLayoutY % b == 0 ? endLayoutY / b : endLayoutY / b + 1) - 1;
+            mMaxCanSlidingViewIndex = endLayoutY % b == 0 ? endLayoutY / b - 1 : endLayoutY / b;
             Log.d(TAG, "--------------MaxCanSlidingViewIndex：--------------" + mMaxCanSlidingViewIndex);
             mCanSliding = true;
         }
