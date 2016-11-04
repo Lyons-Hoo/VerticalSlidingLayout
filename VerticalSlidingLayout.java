@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
@@ -12,12 +13,18 @@ import android.view.ViewGroup;
 import android.widget.Scroller;
 
 /**
+ *  这是一个可滑动的垂直布局
  * Created by Lyons on 2016/10/29.
  */
 
 public class VerticalSlidingLayout extends ViewGroup {
 
-    private final String TAG = "VerticalSlidingLayout";
+    private static final String TAG = "VerticalSlidingLayout";
+
+    /**
+     * 上下文对象
+     */
+    private Context mContext;
 
     /**
      * 滚动器
@@ -29,6 +36,16 @@ public class VerticalSlidingLayout extends ViewGroup {
     private VelocityTracker mTracker;
 
     /**
+     * 标识是否可以滑动
+     */
+    private boolean mCanSliding;
+
+    /**
+     * 记录能滑动到的最大的View下标
+     */
+    private int mMaxCanSlidingViewIndex;
+
+    /**
      * 记录当前View下标
      */
     private int mCurrentIndex;
@@ -36,9 +53,9 @@ public class VerticalSlidingLayout extends ViewGroup {
     /**
      * View下标改变监听器
      */
-    private SlidingViewGroup.OnViewIndexChangeListener mListener;
+    private OnViewIndexChangeListener mListener;
 
-    public void setOnViewIndexChangeListener(SlidingViewGroup.OnViewIndexChangeListener mListener) {
+    public void setOnViewIndexChangeListener(OnViewIndexChangeListener mListener) {
         this.mListener = mListener;
     }
 
@@ -60,6 +77,7 @@ public class VerticalSlidingLayout extends ViewGroup {
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public VerticalSlidingLayout(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
+        init(context);
     }
 
     /**
@@ -68,8 +86,17 @@ public class VerticalSlidingLayout extends ViewGroup {
      * @param context
      */
     private void init(Context context) {
+        if (null == context) {
+            this.mContext = getContext();
+        } else {
+            this.mContext = context;
+        }
         // 实例化Scroller
-        mScroller = new Scroller(context);
+        mScroller = new Scroller(mContext);
+        // 默认屏幕不可滑动
+        mCanSliding = false;
+        // 默认可滑动的View下标为0
+        mMaxCanSlidingViewIndex = 0;
     }
 
     /**
@@ -80,22 +107,30 @@ public class VerticalSlidingLayout extends ViewGroup {
      */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        // 获取容器布局参数
-        ViewGroup.LayoutParams layoutParams = getLayoutParams();
+
+        int containerWidth = 0; // 容器的宽度
+        int containerHeight = 0; // 容器的高度
+        /**
+         * MeasureSpec Mode 说明：
+         *          MeasureSpec.EXACTLY：指定容器的尺寸为精确的具体值（例如30dp或者MATCH_PARENT模式）
+         *          MeasureSpec.AT_MOST：指定容器的尺寸为最大尺寸（通常是指宽高模式设置为WARP_CONTENT）
+         */
+        final int widthMode = MeasureSpec.getMode(widthMeasureSpec); // 获取容器宽度的模式
+        final int heightMode = MeasureSpec.getMode(heightMeasureSpec); // 获取容器高度的模式
         /**
          * 为了支持Layout的WRAP_CONTENT模式
-         * 如果宽或者高使用了WRAP_CONTENT模式，才去计算容器的宽高，否则使用父容器传入的宽高
+         * 如果宽或者高使用了WRAP_CONTENT模式，才去计算容器的宽高
          */
-        if (layoutParams.width == LayoutParams.WRAP_CONTENT || layoutParams.height == LayoutParams.WRAP_CONTENT) {
-            int containerWidth = 0; // 容器的宽度
-            int containerHeight = 0; // 容器的高度
-            int childCount = getChildCount(); // 获取容器内子View的个数
+        if (widthMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.AT_MOST) {
+            // 获取容器布局参数
+            final ViewGroup.LayoutParams layoutParams = getLayoutParams();
+            final int childCount = getChildCount(); // 获取容器内子View的个数
             for (int i = 0; i < childCount; i++) { // 遍历子View
-                View childView = getChildAt(i); // 获取当前子View
+                final View childView = getChildAt(i); // 获取当前子View
                 // 测量当前子View
                 measureChild(childView, widthMeasureSpec, heightMeasureSpec);
                 // 获取子View的Margin信息
-                MarginLayoutParams childLayoutParams = (MarginLayoutParams) childView.getLayoutParams();
+                final MarginLayoutParams childLayoutParams = (MarginLayoutParams) childView.getLayoutParams();
                 // 计算当前子View的实际宽度（包含Margin和Padding信息）
                 int childViewWidth = childLayoutParams.leftMargin + childView.getPaddingLeft()
                         + childView.getMeasuredWidth() + childView.getPaddingRight() + childLayoutParams.rightMargin;
@@ -104,20 +139,29 @@ public class VerticalSlidingLayout extends ViewGroup {
                         + childView.getMeasuredHeight() + childView.getPaddingBottom() + childLayoutParams.bottomMargin;
                 // 找出最宽的子View，作为容器的宽度
                 containerWidth = childViewWidth > containerWidth ? childViewWidth : containerWidth;
-                containerHeight += childViewHeight; // 累加子View的高度，计算出容器的高度
+                // 累加子View的高度，计算出容器的高度
+                containerHeight += childViewHeight;
             }
-            /**
-             * 容器宽高测量完毕，根据布局的宽高模式，设置进去
-             */
-            setMeasuredDimension(layoutParams.width == LayoutParams.WRAP_CONTENT ? containerWidth : widthMeasureSpec,
-                    layoutParams.height == LayoutParams.WRAP_CONTENT ? containerHeight : heightMeasureSpec);
-        } else {
-            /**
-             * Layout中没有WRAP_CONTENT模式，直接设置父容器传入的值即可
-             */
-            setMeasuredDimension(widthMeasureSpec, heightMeasureSpec);
         }
-
+        /**
+         * 容器的宽高有使用WRAP_CONTENT模式，就使用测量的值
+         * 否则直接使用父容器传入的值
+         */
+        containerWidth = widthMode == MeasureSpec.AT_MOST ? containerWidth : MeasureSpec.getSize(widthMeasureSpec);
+        containerHeight = heightMode == MeasureSpec.AT_MOST ? containerHeight : MeasureSpec.getSize(heightMeasureSpec);
+        /**
+         * 检查容器设置的宽高是否超过了屏幕宽高
+         * 超过则设置容器的宽高为屏幕的宽高
+         */
+        DisplayMetrics displayMetrics = getDisplayMetrics();
+        final int fullScreenWidth = displayMetrics.widthPixels;
+        final int fullScreenHeight = displayMetrics.heightPixels;
+        containerWidth = Math.min(containerWidth, fullScreenWidth);
+        containerHeight = Math.min(containerHeight, fullScreenHeight);
+        /**
+         * 处理完毕，告诉父容器测量结果
+         */
+        setMeasuredDimension(containerWidth, containerHeight);
     }
 
     /**
@@ -131,25 +175,76 @@ public class VerticalSlidingLayout extends ViewGroup {
      */
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        /**
-         * 说明：r为测量好的容器宽度，b为测量好的容器高度
-         * 将容器内的每个字View填充整个屏幕，这样的话意味
-         * 着子View设置的一些属性失效（例如Margin和Padding）
-         */
+
+        int endLayoutX = 0; // X轴布局到哪里
         int endLayoutY = 0; // Y轴布局到哪里
-        int childCount = getChildCount();
+        final int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) { // 遍历子View
-            View childView = getChildAt(i);
-            int startLayoutY = 0;
+            final View childView = getChildAt(i);
+            if (childView.getVisibility() == View.GONE) { // 有子View设置了隐藏
+                continue; // 跳过，进入下一子View
+            }
+            // 测量当前子View（为了获取Padding和Margin信息）
+            measureChild(childView, r, b);
+            int childMeasureWidth = childView.getMeasuredWidth();
+            int childMeasureHeight = childView.getMeasuredHeight();
+            // 获取子View的Margin信息
+            MarginLayoutParams layoutParams = (MarginLayoutParams) childView.getLayoutParams();
             /**
-             * 对子View进行垂直布局（Vertical）
+             * 如果子View宽高有设置MATCH_PARENT模式，将容器的宽高赋给它
              */
-            startLayoutY += endLayoutY; // 计算每屏Y轴其实布局坐标点
-            endLayoutY = startLayoutY + b; // 计算每屏Y轴结束布局坐标点
-            childView.layout(l, startLayoutY, r, endLayoutY); // 对子View进行定位
+            if (layoutParams.width == MarginLayoutParams.MATCH_PARENT) {
+                childMeasureWidth = r;
+            }
+            if (layoutParams.height == MarginLayoutParams.MATCH_PARENT) {
+                childMeasureHeight = b;
+            }
+            // 计算子ViewX轴从哪里开始布局
+            int startLayoutX = endLayoutX + layoutParams.leftMargin + childView.getPaddingLeft();
+            // 计算子ViewY轴从哪里开始布局
+            int startLayoutY = endLayoutY + layoutParams.topMargin + childView.getPaddingTop();
+            // 计算子ViewX轴布局到哪里
+            endLayoutX = startLayoutX + childMeasureWidth + layoutParams.rightMargin + childView.getPaddingRight();
+            // 计算子ViewY轴布局到哪里
+            endLayoutY = startLayoutY + childMeasureHeight + layoutParams.bottomMargin + childView.getPaddingBottom();
+            // 换行
+            startLayoutY += layoutParams.topMargin + childView.getPaddingTop();
+            startLayoutX = layoutParams.leftMargin + childView.getPaddingLeft();
+            /**
+             * 子View的位置都确定了，可以进行布局了
+             */
+            childView.layout(startLayoutX, startLayoutY, endLayoutX, endLayoutY);
+        }
+        /**
+         * 如果子View总高度超过了容器高度，则分屏布局。
+         * 根据最终Y轴坐标点，计算可以滑动的最大View下标
+         */
+        if (endLayoutY > b) {
+            // 下标是从0开始
+            mMaxCanSlidingViewIndex = (endLayoutY % b == 0 ? endLayoutY / b : endLayoutY / b + 1) - 1;
+            Log.d(TAG, "--------------MaxCanSlidingViewIndex：--------------" + mMaxCanSlidingViewIndex);
+            mCanSliding = true;
         }
     }
 
+    /**
+     * 事件拦截
+     *
+     * @param ev
+     * @return
+     */
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        Log.d(TAG, "---------进入拦截器--------");
+        return false; // 默认不拦截，先让子View处理，子View不处理的话再由容器处理
+    }
+
+    /**
+     * 处理分发下来的事件
+     *
+     * @param event
+     * @return
+     */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (null == mTracker) {
@@ -157,24 +252,29 @@ public class VerticalSlidingLayout extends ViewGroup {
         }
         switch (event.getAction()) {
             case MotionEvent.ACTION_MOVE: // 手指移动
+                if (!mCanSliding) { // 是否能够滑动
+                    break;
+                }
                 if (null != mTracker) {
                     mTracker.addMovement(event); // 将事件传递给速率器
                     mTracker.computeCurrentVelocity(40); // 设置速率器时间（单位为毫秒）
                 }
                 Log.d(TAG, "---------VelocityY:--------  " + mTracker.getYVelocity());
                 /**
-                 * 随着手指移动，并设置了1/2的阻尼
+                 * 随着手指移动，并设置了1/3的阻尼
                  */
-                scrollBy(0, (int) (-mTracker.getYVelocity() / 2));
+                scrollBy(0, (int) (-mTracker.getYVelocity() / 3));
                 break;
             case MotionEvent.ACTION_UP: // 手指抬起
+                if (!mCanSliding) {
+                    break;
+                }
                 /**
                  *  滑动的距离（getScrollY）+ 屏幕的2/3 高度（因为是上下滑动，
                  *  左右的话就是算宽度）/ 屏幕的高度计算滑动的距离是否超过
-                 *  屏幕的2/3，超过就滑动到下一屏（viewIndex从0开始）
+                 *  屏幕的1/3，超过就滑动到下一屏（viewIndex从0开始）
                  */
                 Log.d(TAG, "---------ScrollY:--------  " + getScrollY());
-                Log.d(TAG, "---------Height:--------  " + getHeight());
                 int viewIndex = 0;
                 if (mTracker.getYVelocity() > 0) { // 向下滑动
                     /**
@@ -200,23 +300,22 @@ public class VerticalSlidingLayout extends ViewGroup {
                 /**
                  * 计算容器最后一个View的下标，防止滑动超出最后一个View
                  */
-                int maxChildIndex = getChildCount() - 1;
-                if (viewIndex > maxChildIndex) {
-                    viewIndex = maxChildIndex;
+                if (viewIndex > mMaxCanSlidingViewIndex) {
+                    viewIndex = mMaxCanSlidingViewIndex;
                 }
                 /**
                  *  计算要滑动到的Y轴坐标 = viewIndex * 屏幕的高度 - 滑动的距离
                  *  正数：View向上滑动 负数：View向下滑动
                  */
                 int wantScrollY = viewIndex * getHeight() - getScrollY();
-//                Log.d(TAG, "---------wantScrollY:------  " + wantScrollY);
+                Log.d(TAG, "---------wantScrollY:------  " + wantScrollY);
                 mScroller.startScroll(0, getScrollY(), 0, wantScrollY); // 滑动
                 invalidate(); // 重绘UI
                 mTracker.recycle(); //　释放速率器
                 mTracker = null;
                 break;
         }
-        return true; // true表示事件会继续往下传递，false则消耗掉事件，不再继续往下传递
+        return true; //
     }
 
     /**
@@ -226,10 +325,22 @@ public class VerticalSlidingLayout extends ViewGroup {
     @Override
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) { // 滑动没有完成
-//            Log.d(TAG, "-------ScrollerCurrentY:------  " + mScroller.getCurrY());
+            Log.d(TAG, "-------ScrollerCurrentY:------  " + mScroller.getCurrY());
             scrollTo(0, mScroller.getCurrY()); // 滑动
             invalidate(); // 重绘
         }
+    }
+
+    /**
+     * 获取屏幕信息
+     *
+     * @return
+     */
+    private DisplayMetrics getDisplayMetrics() {
+        if (null != mContext) {
+            return mContext.getResources().getDisplayMetrics();
+        }
+        return getContext().getResources().getDisplayMetrics();
     }
 
     /**
