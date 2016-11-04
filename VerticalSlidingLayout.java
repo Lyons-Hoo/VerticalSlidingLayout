@@ -342,6 +342,17 @@ public class VerticalSlidingLayout extends ViewGroup {
         }
         return getContext().getResources().getDisplayMetrics();
     }
+    
+    /**
+     * 重写generateLayoutParams()方法，获取View的Margin参数信息
+     *
+     * @param attrs
+     * @return
+     */
+    @Override
+    public LayoutParams generateLayoutParams(AttributeSet attrs) {
+        return new ViewGroup.MarginLayoutParams(mContext, attrs);
+    }
 
     /**
      * 重写generateLayoutParams()方法，获取View的Margin参数信息
