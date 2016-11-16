@@ -13,7 +13,7 @@ import android.view.ViewGroup;
 import android.widget.Scroller;
 
 /**
- *  这是一个可滑动的垂直布局
+ * 这是一个可滑动的垂直布局
  * Created by Lyons on 2016/10/29.
  */
 
@@ -43,7 +43,7 @@ public class VerticalSlidingLayout extends ViewGroup {
     /**
      * 记录能滑动到的最大的View下标
      */
-    private int mMaxCanSlidingViewIndex;
+    private int mMaxSlidingViewIndex;
 
     /**
      * 记录当前View下标
@@ -96,7 +96,7 @@ public class VerticalSlidingLayout extends ViewGroup {
         // 默认屏幕不可滑动
         mCanSliding = false;
         // 默认可滑动的View下标为0
-        mMaxCanSlidingViewIndex = 0;
+        mMaxSlidingViewIndex = 0;
     }
 
     /**
@@ -123,14 +123,13 @@ public class VerticalSlidingLayout extends ViewGroup {
          */
         if (widthMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.AT_MOST) {
             // 获取容器布局参数
-            final ViewGroup.LayoutParams layoutParams = getLayoutParams();
             final int childCount = getChildCount(); // 获取容器内子View的个数
             for (int i = 0; i < childCount; i++) { // 遍历子View
                 final View childView = getChildAt(i); // 获取当前子View
                 // 测量当前子View
                 measureChild(childView, widthMeasureSpec, heightMeasureSpec);
                 // 获取子View的Margin信息
-                final MarginLayoutParams childLayoutParams = (MarginLayoutParams) childView.getLayoutParams();
+                final ViewGroup.MarginLayoutParams childLayoutParams = (ViewGroup.MarginLayoutParams) childView.getLayoutParams();
                 // 计算当前子View的实际宽度（包含Margin和Padding信息）
                 int childViewWidth = childLayoutParams.leftMargin + childView.getPaddingLeft()
                         + childView.getMeasuredWidth() + childView.getPaddingRight() + childLayoutParams.rightMargin;
@@ -145,7 +144,7 @@ public class VerticalSlidingLayout extends ViewGroup {
         }
         /**
          * 容器的宽高有使用WRAP_CONTENT模式，就使用测量的值
-         * 否则直接使用父容器传入的值
+         * 否则直接使用父容器建议的宽高
          */
         containerWidth = widthMode == MeasureSpec.AT_MOST ? containerWidth : MeasureSpec.getSize(widthMeasureSpec);
         containerHeight = heightMode == MeasureSpec.AT_MOST ? containerHeight : MeasureSpec.getSize(heightMeasureSpec);
@@ -189,16 +188,20 @@ public class VerticalSlidingLayout extends ViewGroup {
             int childMeasureWidth = childView.getMeasuredWidth();
             int childMeasureHeight = childView.getMeasuredHeight();
             // 获取子View的Margin信息
-            MarginLayoutParams layoutParams = (MarginLayoutParams) childView.getLayoutParams();
+            final ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) childView.getLayoutParams();
+            Log.d("aaa", "left:" + childView.getLeft());
+            Log.d("aaa", "paddingLeft:" + childView.getPaddingLeft());
+            Log.d("aaa", "marginLeft" + layoutParams.leftMargin);
             /**
              * 如果子View宽高有设置MATCH_PARENT模式，将容器的宽高赋给它
              */
-            if (layoutParams.width == MarginLayoutParams.MATCH_PARENT) {
+            if (layoutParams.width == ViewGroup.MarginLayoutParams.MATCH_PARENT) {
                 childMeasureWidth = r;
             }
-            if (layoutParams.height == MarginLayoutParams.MATCH_PARENT) {
+            if (layoutParams.height == ViewGroup.MarginLayoutParams.MATCH_PARENT) {
                 childMeasureHeight = b;
             }
+
             // 计算子ViewX轴从哪里开始布局
             int startLayoutX = endLayoutX + layoutParams.leftMargin + childView.getPaddingLeft();
             // 计算子ViewY轴从哪里开始布局
@@ -221,8 +224,8 @@ public class VerticalSlidingLayout extends ViewGroup {
          */
         if (endLayoutY > b) {
             // 下标是从0开始
-            mMaxCanSlidingViewIndex = endLayoutY % b == 0 ? endLayoutY / b - 1 : endLayoutY / b;
-            Log.d(TAG, "--------------MaxCanSlidingViewIndex：--------------" + mMaxCanSlidingViewIndex);
+            mMaxSlidingViewIndex = endLayoutY % b == 0 ? endLayoutY / b - 1 : endLayoutY / b;
+            Log.d(TAG, "--------------MaxCanSlidingViewIndex：--------------" + mMaxSlidingViewIndex);
             mCanSliding = true;
         }
     }
@@ -300,14 +303,14 @@ public class VerticalSlidingLayout extends ViewGroup {
                 /**
                  * 计算容器最后一个View的下标，防止滑动超出最后一个View
                  */
-                if (viewIndex > mMaxCanSlidingViewIndex) {
-                    viewIndex = mMaxCanSlidingViewIndex;
+                if (viewIndex > mMaxSlidingViewIndex) {
+                    viewIndex = mMaxSlidingViewIndex;
                 }
                 /**
                  *  计算要滑动到的Y轴坐标 = viewIndex * 屏幕的高度 - 滑动的距离
                  *  正数：View向上滑动 负数：View向下滑动
                  */
-                int wantScrollY = viewIndex * getHeight() - getScrollY();
+                final int wantScrollY = viewIndex * getHeight() - getScrollY();
                 Log.d(TAG, "---------wantScrollY:------  " + wantScrollY);
                 mScroller.startScroll(0, getScrollY(), 0, wantScrollY); // 滑动
                 invalidate(); // 重绘UI
@@ -341,6 +344,16 @@ public class VerticalSlidingLayout extends ViewGroup {
     }
 
     /**
+     * 重写generateDefaultLayoutParams()方法，设置默认的布局参数
+     *
+     * @return
+     */
+    @Override
+    protected LayoutParams generateDefaultLayoutParams() {
+        return new ViewGroup.MarginLayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+    }
+
+    /**
      * 重写generateLayoutParams()方法，获取View的Margin参数信息
      *
      * @param attrs
@@ -348,7 +361,7 @@ public class VerticalSlidingLayout extends ViewGroup {
      */
     @Override
     public LayoutParams generateLayoutParams(AttributeSet attrs) {
-        return new MarginLayoutParams(getContext(), attrs);
+        return new ViewGroup.MarginLayoutParams(mContext, attrs);
     }
 
     /**
