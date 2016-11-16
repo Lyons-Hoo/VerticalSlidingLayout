@@ -337,10 +337,7 @@ public class VerticalSlidingLayout extends ViewGroup {
      * @return
      */
     private DisplayMetrics getDisplayMetrics() {
-        if (null != mContext) {
-            return mContext.getResources().getDisplayMetrics();
-        }
-        return getContext().getResources().getDisplayMetrics();
+        return mContext.getResources().getDisplayMetrics();
     }
 
     /**
