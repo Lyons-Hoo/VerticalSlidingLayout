@@ -59,14 +59,12 @@ public class VerticalSlidingLayout extends ViewGroup {
         this.mListener = mListener;
     }
 
-    public VerticalSlidingLayout(Context context) {
-        super(context);
-        init(context);
+   public VerticalSlidingLayout(Context context) {
+        this(context, null);
     }
 
     public VerticalSlidingLayout(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init(context);
+        this(context, attrs, 0);
     }
 
     public VerticalSlidingLayout(Context context, AttributeSet attrs, int defStyleAttr) {
@@ -77,7 +75,6 @@ public class VerticalSlidingLayout extends ViewGroup {
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public VerticalSlidingLayout(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        init(context);
     }
 
     /**
