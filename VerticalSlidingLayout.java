@@ -186,9 +186,9 @@ public class VerticalSlidingLayout extends ViewGroup {
             int childMeasureHeight = childView.getMeasuredHeight();
             // 获取子View的Margin信息
             final ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) childView.getLayoutParams();
-            Log.d("aaa", "left:" + childView.getLeft());
-            Log.d("aaa", "paddingLeft:" + childView.getPaddingLeft());
-            Log.d("aaa", "marginLeft" + layoutParams.leftMargin);
+            Log.d(TAG, "left:" + childView.getLeft());
+            Log.d(TAG, "paddingLeft:" + childView.getPaddingLeft());
+            Log.d(TAG, "marginLeft" + layoutParams.leftMargin);
             /**
              * 如果子View宽高有设置MATCH_PARENT模式，将容器的宽高赋给它
              */
@@ -261,7 +261,7 @@ public class VerticalSlidingLayout extends ViewGroup {
                 }
                 Log.d(TAG, "---------VelocityY:--------  " + mTracker.getYVelocity());
                 /**
-                 * 随着手指移动，并设置了1/3的阻尼
+                 * 随着手指移动，并设置了2/3的阻尼
                  */
                 scrollBy(0, (int) (-mTracker.getYVelocity() / 3));
                 break;
